@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Import screens
 import LoginScreen from './src/screen/LoginScreen';
 import RegisterScreen from './src/screen/RegisterScreen';
+import OTPScreen from './src/screen/OTPScreen'; // --- IMPORT NEW SCREEN ---
 import HomeScreen from './src/screen/HomeScreen';
 import MyReportsScreen from './src/screen/MyReportsScreen';
 import ReportIssueScreen from './src/screen/ReportIssueScreen';
@@ -68,6 +69,14 @@ export default function App() {
           name="Register"
           component={RegisterScreen}
           options={{ headerShown: false }}
+        />
+        {/* --- ADD OTP SCREEN TO STACK --- */}
+        <Stack.Screen
+          name="OTP"
+          component={OTPScreen}
+          options={{
+            title: 'Verify Your Number', // This shows a header with a title and a back button
+          }}
         />
         {/* The Main screen is now the entire Tab Navigator */}
         <Stack.Screen

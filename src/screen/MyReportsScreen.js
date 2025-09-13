@@ -43,6 +43,20 @@ const MyReportsScreen = () => {
     },
   ]);
 
+  // --- NEW STATE: To track the currently selected filter ---
+  const [activeFilter, setActiveFilter] = useState(null); // null means 'All'
+
+  // --- NEW FUNCTION: To handle pressing a filter button ---
+  const handleFilterPress = (status) => {
+    // If the user presses the currently active filter, clear the filter
+    if (activeFilter === status) {
+      setActiveFilter(null);
+    } else {
+      // Otherwise, set the new filter
+      setActiveFilter(status);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Pending': return '#F59E0B';
@@ -62,10 +76,15 @@ const MyReportsScreen = () => {
   };
 
   const statusCounts = {
-    pending: reports.filter(r => r.status === 'Pending').length,
-    inProgress: reports.filter(r => r.status === 'In Progress').length,
-    resolved: reports.filter(r => r.status === 'Resolved').length,
+    pending: reports.filter((r) => r.status === 'Pending').length,
+    inProgress: reports.filter((r) => r.status === 'In Progress').length,
+    resolved: reports.filter((r) => r.status === 'Resolved').length,
   };
+
+  // --- NEW LOGIC: Create a new list based on the active filter ---
+  const filteredReports = activeFilter
+    ? reports.filter((report) => report.status === activeFilter)
+    : reports;
 
   const renderReportItem = ({ item }) => (
     <TouchableOpacity style={styles.reportCard}>
@@ -97,31 +116,31 @@ const MyReportsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header (No changes here) */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>PR</Text>
-          </View>
-          <View>
-            <Text style={styles.appName}>Parivartan</Text>
-            <Text style={styles.location}>Pune</Text>
-          </View>
+            <View style={styles.logo}>
+                <Text style={styles.logoText}>PR</Text>
+            </View>
+            <View>
+                <Text style={styles.appName}>Parivartan</Text>
+                <Text style={styles.location}>Pune</Text>
+            </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notificationBadge}>
-            <Ionicons name="notifications" size={24} color="#666" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="person-circle" size={32} color="#666" />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.notificationBadge}>
+                <Ionicons name="notifications" size={24} color="#666" />
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>2</Text>
+                </View>
+            </TouchableOpacity>
+            <TouchableOpacity>
+                <Ionicons name="person-circle" size={32} color="#666" />
+            </TouchableOpacity>
         </View>
       </View>
 
-      {/* Page Title with Actions */}
+      {/* Page Title with Actions (No changes here) */}
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>My Reports</Text>
         <View style={styles.pageActions}>
@@ -134,29 +153,58 @@ const MyReportsScreen = () => {
         </View>
       </View>
 
-      {/* Status Summary */}
+      {/* --- UPDATED: Status Summary section is now a set of buttons --- */}
       <View style={styles.statusSummary}>
-        <View style={[styles.statusCard, {backgroundColor: '#FEF3C7'}]}>
-          <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>{statusCounts.pending}</Text>
+        {/* Pending Filter Button */}
+        <TouchableOpacity
+          style={[
+            styles.statusCard,
+            { backgroundColor: '#FEF3C7' },
+            // Apply inactive style if a filter is active and it's NOT this one
+            activeFilter && activeFilter !== 'Pending' && styles.inactiveCard,
+          ]}
+          onPress={() => handleFilterPress('Pending')}
+        >
+          <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>
+            {statusCounts.pending}
+          </Text>
           <Text style={[styles.statusLabel, { color: '#92400E' }]}>Pending</Text>
-        </View>
-        <View style={[styles.statusCard, {backgroundColor: '#E0E7FF'}]}>
+        </TouchableOpacity>
+
+        {/* In Progress Filter Button */}
+        <TouchableOpacity
+          style={[
+            styles.statusCard,
+            { backgroundColor: '#E0E7FF' },
+            activeFilter && activeFilter !== 'In Progress' && styles.inactiveCard,
+          ]}
+          onPress={() => handleFilterPress('In Progress')}
+        >
           <Text style={[styles.statusNumber, { color: '#4F46E5' }]}>
             {statusCounts.inProgress}
           </Text>
           <Text style={[styles.statusLabel, { color: '#3730A3' }]}>In Progress</Text>
-        </View>
-        <View style={[styles.statusCard, {backgroundColor: '#D1FAE5'}]}>
+        </TouchableOpacity>
+
+        {/* Resolved Filter Button */}
+        <TouchableOpacity
+          style={[
+            styles.statusCard,
+            { backgroundColor: '#D1FAE5' },
+            activeFilter && activeFilter !== 'Resolved' && styles.inactiveCard,
+          ]}
+          onPress={() => handleFilterPress('Resolved')}
+        >
           <Text style={[styles.statusNumber, { color: '#10B981' }]}>
             {statusCounts.resolved}
           </Text>
           <Text style={[styles.statusLabel, { color: '#065F46' }]}>Resolved</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
-      {/* Reports List */}
+      {/* --- UPDATED: Reports List now uses the filtered data --- */}
       <FlatList
-        data={reports}
+        data={filteredReports} // Use filteredReports instead of reports
         renderItem={renderReportItem}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
@@ -167,6 +215,11 @@ const MyReportsScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    // Add the new inactiveCard style
+    inactiveCard: {
+        opacity: 0.5,
+    },
+    // ... (rest of the styles are unchanged)
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
