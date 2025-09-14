@@ -15,15 +15,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
-  // --- NEW --- State to toggle between login methods
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' or 'phone'
-
-  // States for email login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // --- NEW --- State for phone login
   const [phoneNumber, setPhoneNumber] = useState('');
 
   const handleContinue = () => {
@@ -32,17 +27,14 @@ const LoginScreen = ({ navigation }) => {
         alert('Please fill in all fields');
         return;
       }
-      // Your existing email/password logic here
       console.log('Logging in with Email:', email);
       navigation.navigate('Main');
     } else {
-      // --- NEW --- Phone number validation and navigation
       if (phoneNumber.trim().length < 10) {
-        alert('Please enter a valid phone number');
+        alert('Please enter a valid 10-digit phone number');
         return;
       }
       console.log('Sending OTP to:', phoneNumber);
-      // Navigate to the OTP screen, passing the phone number as a parameter
       navigation.navigate('OTP', { phoneNumber: phoneNumber });
     }
   };
@@ -56,7 +48,6 @@ const LoginScreen = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.content}>
-              {/* Logo (No changes here) */}
               <View style={styles.logoContainer}>
                 <View style={styles.logo}>
                   <Text style={styles.logoText}>PR</Text>
@@ -65,7 +56,6 @@ const LoginScreen = ({ navigation }) => {
                 <Text style={styles.appSubtitle}>Report. Track. Improve.</Text>
               </View>
 
-              {/* --- NEW: Login Method Toggle --- */}
               <View style={styles.toggleContainer}>
                 <TouchableOpacity
                   style={[styles.toggleButton, loginMethod === 'email' && styles.activeToggleButton]}
@@ -85,10 +75,8 @@ const LoginScreen = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
 
-              {/* --- MODIFIED: Conditional Form Rendering --- */}
               {loginMethod === 'email' ? (
                 <View style={styles.form}>
-                  {/* Email Input */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Email</Text>
                     <TextInput
@@ -100,7 +88,6 @@ const LoginScreen = ({ navigation }) => {
                       autoCapitalize="none"
                     />
                   </View>
-                  {/* Password Input */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Password</Text>
                     <View style={styles.passwordInput}>
@@ -119,12 +106,11 @@ const LoginScreen = ({ navigation }) => {
                 </View>
               ) : (
                 <View style={styles.form}>
-                  {/* Phone Number Input */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Phone Number</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Enter your phone number"
+                      placeholder="Enter your 10-digit phone number"
                       value={phoneNumber}
                       onChangeText={setPhoneNumber}
                       keyboardType="phone-pad"
@@ -154,8 +140,6 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-
-// --- STYLES (Includes new styles for the toggle) ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -184,13 +168,12 @@ const styles = StyleSheet.create({
   logoText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
   appTitle: { fontSize: 28, fontWeight: 'bold', color: '#000', marginBottom: 8 },
   appSubtitle: { fontSize: 16, color: '#6B7280' },
-  // --- NEW STYLES ---
   toggleContainer: {
     flexDirection: 'row',
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 4,
-    marginBottom: 20,
+    marginBottom: 30,
   },
   toggleButton: {
     flex: 1,
@@ -214,7 +197,6 @@ const styles = StyleSheet.create({
   activeToggleButtonText: {
     color: '#4F46E5',
   },
-  // --- END NEW STYLES ---
   form: { gap: 20 },
   inputGroup: { gap: 8 },
   label: { fontSize: 16, fontWeight: '500', color: '#374151' },

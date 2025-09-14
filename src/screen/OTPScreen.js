@@ -7,7 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
-  // --- NEW IMPORTS ---
+  // --- FIX: Added the necessary imports for keyboard handling ---
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -16,13 +16,12 @@ import {
 } from 'react-native';
 
 const OTPScreen = ({ route, navigation }) => {
-  const { phoneNumber } = route.params; // Get phone number from navigation
+  const { phoneNumber } = route.params;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef([]);
 
-  // Timer countdown effect
   useEffect(() => {
     if (timer === 0) return;
     const interval = setInterval(() => {
@@ -36,14 +35,12 @@ const OTPScreen = ({ route, navigation }) => {
     newOtp[index] = text;
     setOtp(newOtp);
 
-    // Move to the next input box
     if (text && index < otp.length - 1) {
       inputRefs.current[index + 1].focus();
     }
   };
 
   const handleBackspace = (index) => {
-    // Move to the previous input box on backspace if current is empty
     if (index > 0 && !otp[index]) {
       inputRefs.current[index - 1].focus();
     }
@@ -60,7 +57,7 @@ const OTPScreen = ({ route, navigation }) => {
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
 
-    if (enteredOtp === '123456') {
+    if (enteredOtp === '123456') { // Dummy OTP for testing
       navigation.navigate('Main');
     } else {
       alert('Invalid OTP. Please try again.');
@@ -74,13 +71,14 @@ const OTPScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* --- NEW WRAPPERS --- */}
+      {/* --- FIX: Added KeyboardAvoidingView wrapper --- */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {/* --- FIX: Added ScrollView wrapper --- */}
+          <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
             <View style={styles.content}>
               <Text style={styles.title}>Enter Verification Code</Text>
               <Text style={styles.subtitle}>
@@ -88,7 +86,6 @@ const OTPScreen = ({ route, navigation }) => {
                 +91 ******{phoneNumber.slice(-4)}
               </Text>
 
-              {/* OTP Input Boxes */}
               <View style={styles.otpContainer}>
                 {otp.map((digit, index) => (
                   <TextInput
@@ -108,7 +105,6 @@ const OTPScreen = ({ route, navigation }) => {
                 ))}
               </View>
 
-              {/* Verify Button */}
               <TouchableOpacity
                 style={styles.verifyButton}
                 onPress={handleVerifyOtp}
@@ -121,7 +117,6 @@ const OTPScreen = ({ route, navigation }) => {
                 )}
               </TouchableOpacity>
 
-              {/* Resend OTP Link */}
               <View style={styles.resendContainer}>
                 <Text style={styles.resendText}>Didn't receive the code? </Text>
                 <TouchableOpacity onPress={handleResendOtp} disabled={timer > 0}>
@@ -140,7 +135,6 @@ const OTPScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  // --- NEW STYLE ---
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',

@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+// --- FIX: Import SafeAreaProvider ---
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Import screens
 import LoginScreen from './src/screen/LoginScreen';
@@ -37,14 +39,15 @@ function MainTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4F46E5', // Active icon color
-        tabBarInactiveTintColor: 'gray',   // Inactive icon color
+        tabBarActiveTintColor: '#4F46E5',
+        tabBarInactiveTintColor: 'gray',
+        // --- FIX: Updated tabBarStyle for safe area ---
         tabBarStyle: {
-          paddingBottom: 5,
+          paddingBottom: 10,
           paddingTop: 5,
-          height: 60,
+          height: 65,
         },
-        headerShown: false, // We use custom headers in each screen
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
@@ -57,34 +60,37 @@ function MainTabNavigator() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-        {/* --- ADD OTP SCREEN TO STACK --- */}
-        <Stack.Screen
-          name="OTP"
-          component={OTPScreen}
-          options={{
-            title: 'Verify Your Number', // This shows a header with a title and a back button
-          }}
-        />
-        {/* The Main screen is now the entire Tab Navigator */}
-        <Stack.Screen
-          name="Main"
-          component={MainTabNavigator}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    // --- FIX: Wrap the entire app in SafeAreaProvider ---
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        <Stack.Navigator initialRouteName="Login">
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          {/* --- ADD OTP SCREEN TO STACK --- */}
+          <Stack.Screen
+            name="OTP"
+            component={OTPScreen}
+            options={{
+              title: 'Verify Your Number', // This shows a header with a back button
+              headerShadowVisible: false, // Cleaner look
+            }}
+          />
+          <Stack.Screen
+            name="Main"
+            component={MainTabNavigator}
+            options={{ headerShown: false }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

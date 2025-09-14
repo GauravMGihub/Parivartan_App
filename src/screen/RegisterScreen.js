@@ -15,12 +15,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import ToastNotification from './ToastNotification'; // --- NEW: Import the toast component ---
+import ToastNotification from './ToastNotification'; // Correct path
 
 const RegisterScreen = ({ navigation }) => {
-  // --- NEW: State to manage the notification banner ---
   const [notification, setNotification] = useState({ visible: false, message: '' });
-
   const [profileImage, setProfileImage] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,7 +30,6 @@ const RegisterScreen = ({ navigation }) => {
   const handleChoosePhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-        // Use the new notification for errors too!
         setNotification({ visible: true, message: 'Camera roll permission is required.' });
         setTimeout(() => setNotification({ visible: false, message: '' }), 3000);
         return;
@@ -50,10 +47,8 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  // --- UPDATED: handleRegister function ---
   const handleRegister = () => {
     if (!name.trim() || !phone.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      // For validation errors, we can still use a simple alert or another toast
       alert('Error: Please fill in all required fields');
       return;
     }
@@ -62,11 +57,8 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
     
-    // --- THIS IS THE MAIN CHANGE ---
-    // Instead of Alert.alert(...), we now show our custom notification
     setNotification({ visible: true, message: 'Account created successfully!' });
 
-    // After 2 seconds, hide the notification and navigate to the main screen
     setTimeout(() => {
       setNotification({ visible: false, message: '' });
       navigation.navigate('Main');
@@ -79,10 +71,9 @@ const RegisterScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.content}>
-              {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                   <Ionicons name="arrow-back" size={24} color="#000" />
@@ -90,7 +81,6 @@ const RegisterScreen = ({ navigation }) => {
                 <Text style={styles.headerTitle}>Create Account</Text>
               </View>
 
-              {/* Profile Photo Upload */}
               <View style={styles.profileSection}>
                 <TouchableOpacity style={styles.profileImageContainer} onPress={handleChoosePhoto}>
                   {profileImage ? (
@@ -104,9 +94,7 @@ const RegisterScreen = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
 
-              {/* Form (No changes to the inputs) */}
               <View style={styles.form}>
-                {/* ... your TextInput fields for name, phone, email, etc. ... */}
                  <View style={styles.inputGroup}>
                   <Text style={styles.label}>Full Name</Text>
                   <TextInput
@@ -188,7 +176,6 @@ const RegisterScreen = ({ navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* --- NEW: Render the toast notification component here --- */}
       <ToastNotification
         message={notification.message}
         type="success"
@@ -198,7 +185,6 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
-// --- Styles (No changes needed) ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -251,7 +237,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   form: {
-    gap: 20,
+    gap: 15, // A little less gap
   },
   inputGroup: {
     gap: 8,
@@ -313,4 +299,3 @@ const styles = StyleSheet.create({
 });
 
 export default RegisterScreen;
-

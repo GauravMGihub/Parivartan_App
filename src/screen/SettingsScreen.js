@@ -23,7 +23,7 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -71,7 +71,7 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={[styles.settingText, { color: '#EF4444' }]}>Logout</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -1,27 +1,30 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+// --- FIX: Import hook to get safe area values ---
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ToastNotification = ({ message, type, visible }) => {
-  const slideAnim = useRef(new Animated.Value(100)).current; // Start off-screen at the bottom
+  const slideAnim = useRef(new Animated.Value(150)).current; // Start further off-screen
+  // --- FIX: Get the bottom safe area inset ---
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
-      // Animate in
       Animated.timing(slideAnim, {
-        toValue: 0,
+        // --- FIX: Animate to the bottom inset + 20px padding ---
+        toValue: insets.bottom + 20,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: false, // translateY needs this set to false for this type of animation
       }).start();
     } else {
-      // Animate out
       Animated.timing(slideAnim, {
-        toValue: 100,
+        toValue: 150,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     }
-  }, [visible]);
+  }, [visible, insets.bottom]); // Re-run effect if inset changes
 
   if (!message) return null;
 
@@ -32,7 +35,8 @@ const ToastNotification = ({ message, type, visible }) => {
     <Animated.View
       style={[
         styles.container,
-        { backgroundColor, transform: [{ translateY: slideAnim }] },
+        // --- FIX: Use 'bottom' style property instead of transform ---
+        { backgroundColor, bottom: slideAnim },
       ]}
     >
       <Ionicons name={iconName} size={24} color="#fff" />
@@ -44,7 +48,7 @@ const ToastNotification = ({ message, type, visible }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 40,
+    // --- FIX: Remove 'bottom' from here, it's now controlled by animation ---
     left: 20,
     right: 20,
     flexDirection: 'row',
