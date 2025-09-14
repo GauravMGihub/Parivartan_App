@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import AppHeader from './components/AppHeader';
 
 const MyReportsScreen = () => {
   const [reports] = useState([
@@ -126,78 +127,70 @@ const MyReportsScreen = () => {
       </View>
     </TouchableOpacity>
   );
-
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>PR</Text>
-          </View>
-          <View>
-            <Text style={styles.appName}>Civic Reporter</Text>
-            <Text style={styles.location}>Pimpri-Chinchwad</Text>
-          </View>
-        </View>
-      </View>
-
+  
+  // --- NEW: Header component for the FlatList ---
+  const ListHeader = () => (
+    <>
       {/* Page Title */}
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>My Reports</Text>
       </View>
+      {/* Status Filter Buttons */}
+      <View style={styles.statusSummary}>
+        <TouchableOpacity
+          style={[ styles.statusCard, { backgroundColor: '#FEF3C7' }, activeFilter && activeFilter !== 'Pending' && styles.inactiveCard, ]}
+          onPress={() => handleFilterPress('Pending')}
+        >
+          <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>{statusCounts.pending}</Text>
+          <Text style={[styles.statusLabel, { color: '#92400E' }]}>Pending</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[ styles.statusCard, { backgroundColor: '#E0E7FF' }, activeFilter && activeFilter !== 'In Progress' && styles.inactiveCard, ]}
+          onPress={() => handleFilterPress('In Progress')}
+        >
+          <Text style={[styles.statusNumber, { color: '#4F46E5' }]}>{statusCounts.inProgress}</Text>
+          <Text style={[styles.statusLabel, { color: '#3730A3' }]}>In Progress</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[ styles.statusCard, { backgroundColor: '#D1FAE5' }, activeFilter && activeFilter !== 'Resolved' && styles.inactiveCard, ]}
+          onPress={() => handleFilterPress('Resolved')}
+        >
+          <Text style={[styles.statusNumber, { color: '#10B981' }]}>{statusCounts.resolved}</Text>
+          <Text style={[styles.statusLabel, { color: '#065F46' }]}>Resolved</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Map Component */}
+      <View style={styles.mapSection}>
+        <Text style={styles.sectionTitle}>Reports Map</Text>
+        <View style={styles.mapContainer}>
+          <MapView style={styles.map} initialRegion={PUNE_REGION}>
+            {filteredReports.map((report) => (
+              <Marker
+                key={report.id}
+                coordinate={report.coordinate}
+                title={report.title}
+                description={report.location}
+                pinColor={getMarkerColor(report.status)}
+              />
+            ))}
+          </MapView>
+        </View>
+      </View>
+      <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 20 }]}>
+          {activeFilter ? `${activeFilter} Reports` : 'All Reports'}
+      </Text>
+    </>
+  );
 
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* --- The main AppHeader is now the only fixed element --- */}
+      <AppHeader />
+      
+      {/* --- The FlatList now controls all the scrolling content --- */}
       <FlatList
-        ListHeaderComponent={
-          <>
-            {/* Status Filter Buttons */}
-            <View style={styles.statusSummary}>
-              <TouchableOpacity
-                style={[ styles.statusCard, { backgroundColor: '#FEF3C7' }, activeFilter && activeFilter !== 'Pending' && styles.inactiveCard, ]}
-                onPress={() => handleFilterPress('Pending')}
-              >
-                <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>{statusCounts.pending}</Text>
-                <Text style={[styles.statusLabel, { color: '#92400E' }]}>Pending</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[ styles.statusCard, { backgroundColor: '#E0E7FF' }, activeFilter && activeFilter !== 'In Progress' && styles.inactiveCard, ]}
-                onPress={() => handleFilterPress('In Progress')}
-              >
-                <Text style={[styles.statusNumber, { color: '#4F46E5' }]}>{statusCounts.inProgress}</Text>
-                <Text style={[styles.statusLabel, { color: '#3730A3' }]}>In Progress</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[ styles.statusCard, { backgroundColor: '#D1FAE5' }, activeFilter && activeFilter !== 'Resolved' && styles.inactiveCard, ]}
-                onPress={() => handleFilterPress('Resolved')}
-              >
-                <Text style={[styles.statusNumber, { color: '#10B981' }]}>{statusCounts.resolved}</Text>
-                <Text style={[styles.statusLabel, { color: '#065F46' }]}>Resolved</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Map Component */}
-            <View style={styles.mapSection}>
-              <Text style={styles.sectionTitle}>Reports Map</Text>
-              <View style={styles.mapContainer}>
-                <MapView style={styles.map} initialRegion={PUNE_REGION}>
-                  {filteredReports.map((report) => (
-                    <Marker
-                      key={report.id}
-                      coordinate={report.coordinate}
-                      title={report.title}
-                      description={report.location}
-                      pinColor={getMarkerColor(report.status)}
-                    />
-                  ))}
-                </MapView>
-              </View>
-            </View>
-            
-            <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 20 }]}>
-                {activeFilter ? `${activeFilter} Reports` : 'All Reports'}
-            </Text>
-          </>
-        }
+        ListHeaderComponent={ListHeader} // Use the new header component
         data={filteredReports}
         renderItem={renderReportItem}
         keyExtractor={(item) => item.id.toString()}
@@ -214,43 +207,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logoText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  appName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  location: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
   pageHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingTop: 10, // Add some top padding
   },
   pageTitle: {
     fontSize: 24,
@@ -260,7 +219,7 @@ const styles = StyleSheet.create({
   statusSummary: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginTop: 10,
+    marginTop: 20, // Adjusted margin
     marginBottom: 20,
     gap: 12,
   },
@@ -301,6 +260,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   listContainer: {
+    // This now only needs horizontal padding
     paddingHorizontal: 20,
     paddingBottom: 20,
   },

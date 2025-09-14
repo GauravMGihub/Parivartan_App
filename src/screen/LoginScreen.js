@@ -11,11 +11,12 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Image, // --- 1. Import the Image component ---
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
-  const [loginMethod, setLoginMethod] = useState('email'); // 'email' or 'phone'
+  const [loginMethod, setLoginMethod] = useState('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,9 +50,12 @@ const LoginScreen = ({ navigation }) => {
           <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.content}>
               <View style={styles.logoContainer}>
-                <View style={styles.logo}>
-                  <Text style={styles.logoText}>PR</Text>
-                </View>
+                {/* --- 2. THE FIX: Replace the View/Text with an Image component --- */}
+                <Image
+                  source={require('../../assets/images/satya icon.png')} // Make sure this path is correct
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
                 <Text style={styles.appTitle}>Parivartan</Text>
                 <Text style={styles.appSubtitle}>Report. Track. Improve.</Text>
               </View>
@@ -159,13 +163,14 @@ const styles = StyleSheet.create({
   logo: {
     width: 80,
     height: 80,
-    backgroundColor: '#4F46E5',
+    // --- 3. THE FIX: Remove background color to allow transparency ---
+    // backgroundColor: '#4F46E5', 
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  logoText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
+  // The logoText style is no longer needed
   appTitle: { fontSize: 28, fontWeight: 'bold', color: '#000', marginBottom: 8 },
   appSubtitle: { fontSize: 16, color: '#6B7280' },
   toggleContainer: {

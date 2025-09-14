@@ -6,8 +6,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Platform, // Import Platform
+  StatusBar,  // Import StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+// --- 1. Import the new AppHeader component ---
+import AppHeader from '../screen/components/AppHeader';
 
 const SettingsScreen = ({ navigation }) => {
   const handleLogout = () => {
@@ -16,26 +20,16 @@ const SettingsScreen = ({ navigation }) => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        // This should navigate back to the Login screen and reset the stack
         { text: 'Logout', onPress: () => navigation.popToTop() }
       ]
     );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>PR</Text>
-          </View>
-          <View>
-            <Text style={styles.appName}>Parivartan</Text>
-            <Text style={styles.location}>Pune</Text>
-          </View>
-        </View>
-      </View>
+    // --- FIX: Use SafeAreaView for the main wrapper ---
+    <SafeAreaView style={styles.container}>
+      {/* --- 2. Replace the old header with the reusable AppHeader component --- */}
+      <AppHeader />
 
       <Text style={styles.pageTitle}>Settings</Text>
 
@@ -71,50 +65,19 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={[styles.settingText, { color: '#EF4444' }]}>Logout</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
+// --- 3. Remove the old, duplicated header styles from this file ---
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
+        // Add padding for Android status bar
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 10,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    logo: {
-        width: 40,
-        height: 40,
-        backgroundColor: '#4F46E5',
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    logoText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    appName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#000',
-    },
-    location: {
-        fontSize: 12,
-        color: '#6B7280',
-    },
+    // The 'header', 'headerLeft', 'logo', etc. styles have been removed.
     pageTitle: {
         fontSize: 24,
         fontWeight: 'bold',
