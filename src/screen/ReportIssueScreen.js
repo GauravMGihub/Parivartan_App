@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react'; // Import useEffect for auto-detection
 import {
   View,
