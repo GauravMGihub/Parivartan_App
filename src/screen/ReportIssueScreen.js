@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
-  // --- NEW IMPORTS ---
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -18,16 +17,27 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import ToastNotification from './ToastNotification';
+// Import the map components
+import MapView, { Marker } from 'react-native-maps';
 
 const ReportIssueScreen = ({ navigation }) => {
   const [notification, setNotification] = useState({ visible: false, message: '' });
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('Auto-detected location');
+  const [locationText, setLocationText] = useState('Fetching location...');
   const [images, setImages] = useState([]);
+  
+  // State for map functionality
+  const [mapRegion, setMapRegion] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
 
-  // ... (Your existing functions: categories, request permissions, takePhoto, etc. remain unchanged)
+  // Get the user's location when the component loads
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
+
   const categories = [
     { id: 1, name: 'Roads & Traffic', icon: 'car', color: '#4F46E5' },
     { id: 2, name: 'Street Lighting', icon: 'bulb', color: '#F59E0B' },
@@ -35,29 +45,53 @@ const ReportIssueScreen = ({ navigation }) => {
     { id: 4, name: 'Parks & Recreation', icon: 'leaf', color: '#059669' },
   ];
 
-  const requestCameraPermission = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera permission is required to take photos');
-      return false;
-    }
-    return true;
-  };
-
-  const requestLocationPermission = async () => {
+  const getCurrentLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Location permission is required');
-      return false;
+      Alert.alert('Permission needed', 'Location permission is required for this feature.');
+      setLocationText('Permission denied');
+      return;
     }
-    return true;
+
+    try {
+      const locationData = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = locationData.coords;
+      
+      const currentUserLocation = { latitude, longitude };
+      setUserLocation(currentUserLocation);
+
+      const region = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01, // This controls the zoom level
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(region);
+      centerMapOnUser(region);
+
+      const address = await Location.reverseGeocodeAsync(currentUserLocation);
+      if (address[0]) {
+        setLocationText(`${address[0].street}, ${address[0].city}, ${address[0].postalCode}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Unable to get current location');
+      setLocationText('Could not fetch location');
+    }
+  };
+
+  const centerMapOnUser = (region) => {
+    // Animate the map to the specified region
+    mapRef.current?.animateToRegion(region, 1000);
   };
 
   const takePhoto = async () => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) return;
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Camera permission is required to take photos');
+      return;
+    }
 
-    const result = await ImagePicker.launchCameraAsync({
+    let result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
@@ -69,25 +103,6 @@ const ReportIssueScreen = ({ navigation }) => {
     }
   };
 
-  const getCurrentLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) return;
-
-    try {
-      const locationData = await Location.getCurrentPositionAsync({});
-      const address = await Location.reverseGeocodeAsync({
-        latitude: locationData.coords.latitude,
-        longitude: locationData.coords.longitude,
-      });
-      
-      if (address[0]) {
-        setLocation(`${address[0].street}, ${address[0].city}`);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Unable to get current location');
-    }
-  };
-  
   const handleSubmit = () => {
     if (!selectedCategory || !title.trim() || !description.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -102,12 +117,10 @@ const ReportIssueScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* --- NEW: Wrappers for keyboard handling and scrolling --- */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        {/* Header (outside the scroll/dismiss area) */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#000" />
@@ -122,7 +135,6 @@ const ReportIssueScreen = ({ navigation }) => {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View>
-              {/* All form content goes inside this View */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Issue Type</Text>
                 <View style={styles.categoriesGrid}>
@@ -168,19 +180,38 @@ const ReportIssueScreen = ({ navigation }) => {
                 />
               </View>
 
+              {/* --- UPDATED LOCATION SECTION WITH MAP --- */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Location</Text>
+                <View style={styles.mapContainer}>
+                  {mapRegion ? (
+                    <MapView
+                      ref={mapRef}
+                      style={styles.map}
+                      initialRegion={mapRegion}
+                    >
+                      {userLocation && <Marker coordinate={userLocation} />}
+                    </MapView>
+                  ) : (
+                    <View style={styles.mapLoading}>
+                        <Text>Loading Map...</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.recenterButton}
+                    onPress={() => mapRegion && centerMapOnUser(mapRegion)}
+                  >
+                    <Ionicons name="locate-outline" size={24} color="#4F46E5" />
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.locationRow}>
                   <View style={styles.locationInfo}>
                     <Ionicons name="location" size={20} color="#10B981" />
-                    <Text style={styles.locationText}>{location}</Text>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                        {locationText}
+                    </Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.locationButton}
-                    onPress={getCurrentLocation}
-                  >
-                    <Ionicons name="navigate" size={20} color="#fff" />
-                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -202,7 +233,6 @@ const ReportIssueScreen = ({ navigation }) => {
           </TouchableWithoutFeedback>
         </ScrollView>
       </KeyboardAvoidingView>
-
       <ToastNotification
         message={notification.message}
         type="success"
@@ -217,9 +247,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  // --- NEW: Style for the ScrollView content ---
   scrollContainer: {
-    paddingBottom: 40, // Adds some space at the very bottom
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -237,13 +266,63 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
     color: '#000',
+  },
+  mapContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+    backgroundColor: '#E5E7EB',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  mapLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recenterButton: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    gap: 8,
+  },
+  locationText: {
+    fontSize: 16,
+    color: '#374151',
+    flex: 1,
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -291,34 +370,6 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  locationInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    gap: 8,
-  },
-  locationText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  locationButton: {
-    backgroundColor: '#4F46E5',
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   photoButton: {
     backgroundColor: '#fff',
     borderWidth: 2,
@@ -342,8 +393,8 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#4F46E5',
-    marginHorizontal: 20,
-    // marginVertical: 20, // Removed to let scrollContainer handle bottom space
+    marginHorizontal: 0, // Adjusted for section padding
+    marginTop: 10,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

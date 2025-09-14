@@ -28,7 +28,7 @@ const SettingsScreen = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>CR</Text>
+            <Text style={styles.logoText}>PR</Text>
           </View>
           <View>
             <Text style={styles.appName}>Parivartan</Text>
