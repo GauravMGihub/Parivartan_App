@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect } from 'react'; // Import useEffect for auto-detection
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,19 +7,22 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  SafeAreaView,
+  SafeAreaView, // Use SafeAreaView for the main wrapper
   Image,
+  // --- FIX: Add Platform and StatusBar for better safe area handling ---
+  Platform,
+  StatusBar as RNStatusBar, // Rename to avoid conflict
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Import PROVIDER_GOOGLE for better maps on Android
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const ReportIssueScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('Detecting location...'); // Initial placeholder text
+  const [location, setLocation] = useState('Detecting location...');
   const [images, setImages] = useState([]);
   const [coordinate, setCoordinate] = useState(null);
   const mapRef = useRef(null);
@@ -39,10 +41,9 @@ const ReportIssueScreen = ({ navigation }) => {
     { id: 4, name: 'Parks & Recreation', icon: 'leaf', color: '#059669' },
   ];
 
-  // --- NEW: useEffect hook to auto-detect location when the screen loads ---
   useEffect(() => {
     getCurrentLocation();
-  }, []); // The empty array [] ensures this runs only once when the component mounts
+  }, []);
 
   const handleRemoveImage = (indexToRemove) => {
     setImages(images.filter((_, index) => index !== indexToRemove));
@@ -95,7 +96,6 @@ const ReportIssueScreen = ({ navigation }) => {
       const address = await Location.reverseGeocodeAsync({ latitude, longitude });
       
       if (address[0]) {
-        // This formats the address nicely, including the postal code
         const { street, city, postalCode } = address[0];
         setLocation(`${street ? street + ', ' : ''}${city}, ${postalCode}`);
       }
@@ -191,7 +191,7 @@ const ReportIssueScreen = ({ navigation }) => {
           <View style={styles.mapContainer}>
             <MapView 
               ref={mapRef}
-              provider={PROVIDER_GOOGLE} // Use Google Maps for styling
+              provider={PROVIDER_GOOGLE}
               style={styles.map} 
               initialRegion={PUNE_REGION}
             >
@@ -199,7 +199,6 @@ const ReportIssueScreen = ({ navigation }) => {
             </MapView>
           </View>
 
-          {/* --- UPDATED: Non-editable location display box --- */}
           <View style={styles.locationDisplayBox}>
             <Ionicons name="location-sharp" size={20} color="#10B981" />
             <Text style={styles.locationText}>
@@ -244,9 +243,11 @@ const ReportIssueScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+    // --- FIX: Updated container style ---
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
+        paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
     },
     header: {
         flexDirection: 'row',
@@ -329,7 +330,6 @@ const styles = StyleSheet.create({
     map: {
         ...StyleSheet.absoluteFillObject,
     },
-    // --- UPDATED STYLES for the new location display ---
     locationDisplayBox: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -341,11 +341,10 @@ const styles = StyleSheet.create({
       gap: 8,
     },
     locationText: {
-      flex: 1, // Allows text to wrap
+      flex: 1,
       fontSize: 16,
       color: '#374151',
     },
-    // --- END UPDATED STYLES ---
     fullWidthPhotoButton: {
         flexDirection: 'row',
         alignItems: 'center',
