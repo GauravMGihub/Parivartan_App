@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // Import useEffect for auto-detection
 import {
   View,
   Text,
@@ -8,35 +8,28 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import ToastNotification from './ToastNotification';
-// Import the map components
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Import PROVIDER_GOOGLE for better maps on Android
 
 const ReportIssueScreen = ({ navigation }) => {
-  const [notification, setNotification] = useState({ visible: false, message: '' });
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [locationText, setLocationText] = useState('Fetching location...');
+  const [location, setLocation] = useState('Detecting location...'); // Initial placeholder text
   const [images, setImages] = useState([]);
-  
-  // State for map functionality
-  const [mapRegion, setMapRegion] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [coordinate, setCoordinate] = useState(null);
   const mapRef = useRef(null);
 
-  // Get the user's location when the component loads
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
+  const PUNE_REGION = {
+    latitude: 18.635,
+    longitude: 73.78,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  };
 
   const categories = [
     { id: 1, name: 'Roads & Traffic', icon: 'car', color: '#4F46E5' },
@@ -45,56 +38,41 @@ const ReportIssueScreen = ({ navigation }) => {
     { id: 4, name: 'Parks & Recreation', icon: 'leaf', color: '#059669' },
   ];
 
-  const getCurrentLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Location permission is required for this feature.');
-      setLocationText('Permission denied');
-      return;
-    }
+  // --- NEW: useEffect hook to auto-detect location when the screen loads ---
+  useEffect(() => {
+    getCurrentLocation();
+  }, []); // The empty array [] ensures this runs only once when the component mounts
 
-    try {
-      const locationData = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = locationData.coords;
-      
-      const currentUserLocation = { latitude, longitude };
-      setUserLocation(currentUserLocation);
-
-      const region = {
-        latitude,
-        longitude,
-        latitudeDelta: 0.01, // This controls the zoom level
-        longitudeDelta: 0.01,
-      };
-      setMapRegion(region);
-      centerMapOnUser(region);
-
-      const address = await Location.reverseGeocodeAsync(currentUserLocation);
-      if (address[0]) {
-        setLocationText(`${address[0].street}, ${address[0].city}, ${address[0].postalCode}`);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Unable to get current location');
-      setLocationText('Could not fetch location');
-    }
+  const handleRemoveImage = (indexToRemove) => {
+    setImages(images.filter((_, index) => index !== indexToRemove));
   };
 
-  const centerMapOnUser = (region) => {
-    // Animate the map to the specified region
-    mapRef.current?.animateToRegion(region, 1000);
-  };
-
-  const takePhoto = async () => {
+  const requestCameraPermission = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Camera permission is required to take photos');
-      return;
+      return false;
     }
+    return true;
+  };
 
-    let result = await ImagePicker.launchCameraAsync({
+  const requestLocationPermission = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setLocation('Permission denied');
+      Alert.alert('Permission needed', 'Location permission is required to auto-detect your position.');
+      return false;
+    }
+    return true;
+  };
+
+  const takePhoto = async () => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsEditing: false,
       quality: 0.8,
     });
 
@@ -103,24 +81,52 @@ const ReportIssueScreen = ({ navigation }) => {
     }
   };
 
+  const getCurrentLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) return;
+
+    try {
+      const locationData = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = locationData.coords;
+      
+      setCoordinate({ latitude, longitude });
+      
+      const address = await Location.reverseGeocodeAsync({ latitude, longitude });
+      
+      if (address[0]) {
+        // This formats the address nicely, including the postal code
+        const { street, city, postalCode } = address[0];
+        setLocation(`${street ? street + ', ' : ''}${city}, ${postalCode}`);
+      }
+      
+      mapRef.current?.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+
+    } catch (error) {
+      setLocation('Could not fetch location');
+      Alert.alert('Error', 'Unable to get current location');
+    }
+  };
+
   const handleSubmit = () => {
-    if (!selectedCategory || !title.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!selectedCategory || !title.trim() || !description.trim() || !coordinate) {
+      Alert.alert('Error', 'Please fill in all required fields and ensure location is detected.');
       return;
     }
-    setNotification({ visible: true, message: 'Report submitted successfully!' });
-    setTimeout(() => {
-      setNotification({ visible: false, message: '' });
-      navigation.navigate('MyReports');
-    }, 2000);
+
+    Alert.alert('Success', 'Report submitted successfully!', [
+      { text: 'OK', onPress: () => navigation.navigate('MyReports') }
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#000" />
@@ -129,282 +135,264 @@ const ReportIssueScreen = ({ navigation }) => {
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContainer}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Issue Type</Text>
-                <View style={styles.categoriesGrid}>
-                  {categories.map((category) => (
-                    <TouchableOpacity
-                      key={category.id}
-                      style={[
-                        styles.categoryCard,
-                        selectedCategory === category.id && styles.categorySelected,
-                      ]}
-                      onPress={() => setSelectedCategory(category.id)}
-                    >
-                      <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                        <Ionicons name={category.icon} size={24} color="#fff" />
-                      </View>
-                      <Text style={styles.categoryName}>{category.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+        {/* Issue Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Issue Type</Text>
+          <View style={styles.categoriesGrid}>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  selectedCategory === category.id && styles.categorySelected
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
+                  <Ionicons name={category.icon} size={24} color="#fff" />
                 </View>
-              </View>
+                <Text style={styles.categoryName}>{category.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Title</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Brief description of the issue"
-                  value={title}
-                  onChangeText={setTitle}
-                  maxLength={100}
-                />
-              </View>
+        {/* Title */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Title</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Brief description of the issue"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={100}
+          />
+        </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Provide more details about the issue..."
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                  maxLength={500}
-                />
-              </View>
+        {/* Description */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Description</Text>
+          <TextInput
+            style={[styles.textInput, styles.textArea]}
+            placeholder="Provide more details about the issue..."
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+          />
+        </View>
 
-              {/* --- UPDATED LOCATION SECTION WITH MAP --- */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Location</Text>
-                <View style={styles.mapContainer}>
-                  {mapRegion ? (
-                    <MapView
-                      ref={mapRef}
-                      style={styles.map}
-                      initialRegion={mapRegion}
-                    >
-                      {userLocation && <Marker coordinate={userLocation} />}
-                    </MapView>
-                  ) : (
-                    <View style={styles.mapLoading}>
-                        <Text>Loading Map...</Text>
-                    </View>
-                  )}
+        {/* Location */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Location</Text>
+          
+          <View style={styles.mapContainer}>
+            <MapView 
+              ref={mapRef}
+              provider={PROVIDER_GOOGLE} // Use Google Maps for styling
+              style={styles.map} 
+              initialRegion={PUNE_REGION}
+            >
+              {coordinate && <Marker coordinate={coordinate} />}
+            </MapView>
+          </View>
+
+          {/* --- UPDATED: Non-editable location display box --- */}
+          <View style={styles.locationDisplayBox}>
+            <Ionicons name="location-sharp" size={20} color="#10B981" />
+            <Text style={styles.locationText}>
+              {location}
+            </Text>
+          </View>
+        </View>
+
+        {/* Photos */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Photos ({images.length})</Text>
+          
+          <TouchableOpacity style={styles.fullWidthPhotoButton} onPress={takePhoto}>
+            <Ionicons name="camera-outline" size={24} color="#4F46E5" />
+            <Text style={styles.photoButtonText}>Take Photo</Text>
+          </TouchableOpacity>
+
+          {images.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+              {images.map((image, index) => (
+                <View key={index} style={styles.previewImageWrapper}>
+                  <Image source={{ uri: image.uri }} style={styles.previewImage} />
                   <TouchableOpacity 
-                    style={styles.recenterButton}
-                    onPress={() => mapRegion && centerMapOnUser(mapRegion)}
+                    style={styles.removeImageButton} 
+                    onPress={() => handleRemoveImage(index)}
                   >
-                    <Ionicons name="locate-outline" size={24} color="#4F46E5" />
+                    <Ionicons name="close-circle" size={24} color="white" />
                   </TouchableOpacity>
                 </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
 
-                <View style={styles.locationRow}>
-                  <View style={styles.locationInfo}>
-                    <Ionicons name="location" size={20} color="#10B981" />
-                    <Text style={styles.locationText} numberOfLines={1}>
-                        {locationText}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Photos</Text>
-                <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-                  <Ionicons name="camera-outline" size={40} color="#6B7280" />
-                  <Text style={styles.photoButtonText}>Add Photo</Text>
-                </TouchableOpacity>
-                {images.length > 0 && (
-                  <Text style={styles.imageCount}>{images.length} photo(s) added</Text>
-                )}
-              </View>
-
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitButtonText}>Submit Report</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableWithoutFeedback>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      <ToastNotification
-        message={notification.message}
-        type="success"
-        visible={notification.visible}
-      />
+        {/* Submit Button */}
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Submit Report</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  scrollContainer: {
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#fff',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#000',
-  },
-  mapContainer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-    backgroundColor: '#E5E7EB',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  mapLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recenterButton: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    gap: 8,
-  },
-  locationText: {
-    fontSize: 16,
-    color: '#374151',
-    flex: 1,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  categoryCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '48%',
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  categorySelected: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#EEF2FF',
-  },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    color: '#374151',
-  },
-  textInput: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: '#000',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  photoButton: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoButtonText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 8,
-  },
-  imageCount: {
-    fontSize: 14,
-    color: '#10B981',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    marginHorizontal: 0, // Adjusted for section padding
-    marginTop: 10,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        backgroundColor: '#fff',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#000',
+    },
+    section: {
+        padding: 20,
+        paddingTop: 10,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 12,
+        color: '#000',
+    },
+    categoriesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    categoryCard: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        width: '48%',
+        marginBottom: 12,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    categorySelected: {
+        borderColor: '#4F46E5',
+        backgroundColor: '#EEF2FF',
+    },
+    categoryIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    categoryName: {
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
+        color: '#374151',
+    },
+    textInput: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 16,
+        fontSize: 16,
+        color: '#000',
+    },
+    textArea: {
+        height: 100,
+        textAlignVertical: 'top',
+    },
+    mapContainer: {
+        height: 200,
+        backgroundColor: '#E5E7EB',
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginBottom: 12,
+    },
+    map: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    // --- UPDATED STYLES for the new location display ---
+    locationDisplayBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      padding: 16,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#D1D5DB',
+      gap: 8,
+    },
+    locationText: {
+      flex: 1, // Allows text to wrap
+      fontSize: 16,
+      color: '#374151',
+    },
+    // --- END UPDATED STYLES ---
+    fullWidthPhotoButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        paddingVertical: 16,
+    },
+    photoButtonText: {
+        fontSize: 16,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    imagePreviewContainer: {
+        marginTop: 16,
+    },
+    previewImageWrapper: {
+        position: 'relative',
+        marginRight: 10,
+    },
+    previewImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 8,
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 12,
+    },
+    submitButton: {
+        backgroundColor: '#4F46E5',
+        marginHorizontal: 20,
+        marginVertical: 20,
+        padding: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '600',
+    },
 });
 
 export default ReportIssueScreen;
-

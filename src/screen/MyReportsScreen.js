@@ -99,7 +99,6 @@ const MyReportsScreen = () => {
     ? reports.filter((report) => report.status === activeFilter)
     : reports;
 
-  // --- FIXED: Restored the full content of the report card ---
   const renderReportItem = ({ item }) => (
     <TouchableOpacity style={styles.reportCard}>
       <View style={styles.reportIcon}>
@@ -134,37 +133,18 @@ const MyReportsScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>PR</Text>
+            <Text style={styles.logoText}>CR</Text>
           </View>
           <View>
-            <Text style={styles.appName}>Parivartan</Text>
-            <Text style={styles.location}>Pune</Text>
+            <Text style={styles.appName}>Civic Reporter</Text>
+            <Text style={styles.location}>Pimpri-Chinchwad</Text>
           </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notificationBadge}>
-            <Ionicons name="notifications" size={24} color="#666" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="person-circle" size={32} color="#666" />
-          </TouchableOpacity>
         </View>
       </View>
 
       {/* Page Title */}
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>My Reports</Text>
-        <View style={styles.pageActions}>
-          <TouchableOpacity>
-            <Ionicons name="funnel-outline" size={24} color="#6B7280" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="search-outline" size={24} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <FlatList
@@ -213,7 +193,6 @@ const MyReportsScreen = () => {
               </View>
             </View>
             
-            {/* Title for the list below */}
             <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 20 }]}>
                 {activeFilter ? `${activeFilter} Reports` : 'All Reports'}
             </Text>
@@ -229,7 +208,6 @@ const MyReportsScreen = () => {
   );
 };
 
-// --- FIXED: Restored all original styles and merged with new ones ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -270,34 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  notificationBadge: {
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#EF4444',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
   pageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
@@ -305,10 +256,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#000',
-  },
-  pageActions: {
-    flexDirection: 'row',
-    gap: 16,
   },
   statusSummary: {
     flexDirection: 'row',
@@ -423,4 +370,3 @@ const styles = StyleSheet.create({
 });
 
 export default MyReportsScreen;
-
