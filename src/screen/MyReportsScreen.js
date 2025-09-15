@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,49 +8,102 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import AppHeader from './components/AppHeader';
+import { useFocusEffect } from '@react-navigation/native';
+
+// Helper function to map category names to icons ---
+const getIconForCategory = (categoryName) => {
+  switch (categoryName?.toLowerCase()) {
+    case 'roads & traffic':
+      return 'car';
+    case 'street lighting':
+      return 'bulb';
+    case 'waste & cleanliness':
+      return 'trash';
+    case 'parks & recreation':
+      return 'leaf';
+    default:
+      return 'alert-circle'; // A default icon
+  }
+};
+
+// --- NEW: Helper function to format the status string ---
+const formatStatus = (status) => {
+  if (!status) return 'Unknown';
+  // Converts "PENDING" to "Pending"
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
 
 const MyReportsScreen = () => {
-  const [reports] = useState([
-    {
-      id: 1,
-      title: 'Pothole on Main Street',
-      description: 'Large pothole causing traffic issues',
-      location: 'Main Street, Pimpri',
-      date: '10/9/2025',
-      status: 'In Progress',
-      images: 2,
-      icon: 'car',
-      coordinate: { latitude: 18.6288, longitude: 73.7932 },
-    },
-    {
-      id: 2,
-      title: 'Broken Streetlight',
-      description: 'Street light not working since last week',
-      location: 'Park Avenue, Chinchwad',
-      date: '9/9/2025',
-      status: 'Pending',
-      images: 1,
-      icon: 'bulb',
-      coordinate: { latitude: 18.6513, longitude: 73.7629 },
-    },
-    {
-      id: 3,
-      title: 'Overflowing Trash Bin',
-      description: 'Trash bin overflowing near park entrance',
-      location: 'City Park, Pimpri',
-      date: '8/9/2025',
-      status: 'Resolved',
-      images: 1,
-      icon: 'trash',
-      coordinate: { latitude: 18.639, longitude: 73.804 },
-    },
-  ]);
-
+  // --- NEW: Updated state to handle API data, loading, and errors ---
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [activeFilter, setActiveFilter] = useState(null);
+  const [refreshing, setRefreshing] = useState(false); // <-- NEW state for pull-to-refresh
+
+
+  // --- NEW: useEffect to fetch reports from the API ---
+  useFocusEffect(
+    useCallback(() => {
+      const fetchReports = async () => {
+        try {
+          // Don't show the main loader on a background refresh, only on initial load
+          if (!refreshing) {
+            setLoading(true);
+          }
+          const API_URL = 'https://parivartan-backend.onrender.com/api/reports/my-reports';
+          const response = await fetch(API_URL);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch reports from the server.');
+          }
+
+          const result = await response.json();
+
+          const formattedReports = result.data.map(report => ({
+            id: report.id,
+            title: report.category.name.trim(),
+            description: report.description,
+            location: report.location_address,
+            date: new Date(report.created_at).toLocaleDateString(),
+            status: formatStatus(report.status),
+            images: 1,
+            icon: getIconForCategory(report.category.name),
+            coordinate: {
+              latitude: parseFloat(report.latitude),
+              longitude: parseFloat(report.longitude),
+            },
+          }));
+
+          setReports(formattedReports);
+          setError(null);
+
+        } catch (err) {
+          console.error("Error fetching reports:", err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+          setRefreshing(false); // Stop the refresh indicator
+        }
+      };
+
+      fetchReports();
+    }, [refreshing]) // Add refreshing to dependency array
+  ); // The empty dependency array means this runs once when the component mounts
+
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // The useFocusEffect will re-run because 'refreshing' state changes.
+  }, []);
 
   const PUNE_REGION = {
     latitude: 18.635,
@@ -196,6 +249,9 @@ const MyReportsScreen = () => {
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+        }
       />
     </SafeAreaView>
   );
@@ -207,9 +263,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
   pageHeader: {
     paddingHorizontal: 20,
-    paddingTop: 10, // Add some top padding
+    paddingTop: 10,
   },
   pageTitle: {
     fontSize: 24,
@@ -219,7 +291,7 @@ const styles = StyleSheet.create({
   statusSummary: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginTop: 20, // Adjusted margin
+    marginTop: 20,
     marginBottom: 20,
     gap: 12,
   },
@@ -260,7 +332,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   listContainer: {
-    // This now only needs horizontal padding
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
