@@ -20,7 +20,8 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const ReportIssueScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [title, setTitle] = useState('');
+  //const [title, setTitle] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('Detecting location...');
   const [images, setImages] = useState([]);
@@ -113,16 +114,67 @@ const ReportIssueScreen = ({ navigation }) => {
     }
   };
 
-  const handleSubmit = () => {
-    if (!selectedCategory || !title.trim() || !description.trim() || !coordinate) {
-      Alert.alert('Error', 'Please fill in all required fields and ensure location is detected.');
+  const handleSubmit = async () => {
+    // Update validation to remove title and check for at least one image
+    if (!selectedCategory || !description.trim() || !coordinate || images.length === 0) {
+      Alert.alert('Incomplete Form', 'Please select a category, write a description, add a photo, and ensure location is detected.');
       return;
     }
 
-    Alert.alert('Success', 'Report submitted successfully!', [
-      { text: 'OK', onPress: () => navigation.navigate('MyReports') }
-    ]);
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+    const image = images[0];
+    const uriParts = image.uri.split('.');
+    const fileType = uriParts[uriParts.length - 1];
+
+    formData.append('image', {
+      uri: image.uri,
+      name: `photo.${fileType}`,
+      type: `image/${fileType}`,
+    });
+
+    // Append all the text fields
+    formData.append('description', description);
+    formData.append('latitude', coordinate.latitude);
+    formData.append('longitude', coordinate.longitude);
+    formData.append('location_address', location);
+    formData.append('category_id', selectedCategory);
+
+    const API_URL = 'https://parivartan-backend.onrender.com/api/reports'; 
+    
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData,
+        // NOTE: Do NOT add a 'Content-Type': 'multipart/form-data' header.
+        // React Native's fetch will automatically set it with the correct boundary.
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // If the server responds with an error (e.g., 400, 500)
+        throw new Error(result.message || 'Something went wrong');
+      }
+
+      // If the submission was successful
+      Alert.alert('Success', 'Report submitted successfully!', [
+        { text: 'OK', onPress: () => navigation.navigate('MyReports') }
+      ]);
+
+    } catch (error) {
+      // If there was a network error or an error from the server
+      console.error("Submission Error:", error);
+      Alert.alert('Submission Failed', error.message);
+
+    } finally {
+      // This will run whether the submission succeeded or failed
+      setIsSubmitting(false);
+    }
   };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -159,7 +211,7 @@ const ReportIssueScreen = ({ navigation }) => {
         </View>
 
         {/* Title */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Title</Text>
           <TextInput
             style={styles.textInput}
@@ -168,7 +220,7 @@ const ReportIssueScreen = ({ navigation }) => {
             onChangeText={setTitle}
             maxLength={100}
           />
-        </View>
+        </View> */}
 
         {/* Description */}
         <View style={styles.section}>
@@ -234,8 +286,10 @@ const ReportIssueScreen = ({ navigation }) => {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Submit Report</Text>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
