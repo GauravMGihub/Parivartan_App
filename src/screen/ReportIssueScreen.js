@@ -17,7 +17,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapViewer, { MapMarker, PROVIDER_GOOGLE } from './components/MapViewer';
+import { API_URL } from '../config';
 
 const ReportIssueScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -113,20 +114,55 @@ const ReportIssueScreen = ({ navigation }) => {
   };
 
   const getCurrentLocation = async () => {
+    // 1. Web Specific: Fast path
+    if (Platform.OS === 'web') {
+      try {
+        // Use browser's built-in geolocation directly
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setCoordinate({ latitude, longitude });
+            // Set a friendly text immediately so it doesn't say "Detecting..."
+            setLocation(`Lat: ${latitude.toFixed(4)}, Long: ${longitude.toFixed(4)}`);
+            
+            // Try to animate map
+            mapRef.current?.animateToRegion({
+              latitude,
+              longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            });
+          },
+          (error) => {
+             console.log("Web location error", error);
+             // Fallback to Pune if denied
+             setCoordinate(PUNE_REGION);
+             setLocation('Location denied. Pinned Pune (Demo)');
+          }
+        );
+      } catch (e) {
+         setCoordinate(PUNE_REGION);
+         setLocation('Pune, Maharashtra (Default)');
+      }
+      return;
+    }
+
+    // 2. Mobile Logic (Keep as is)
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
 
     try {
       const locationData = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = locationData.coords;
-      
       setCoordinate({ latitude, longitude });
       
+      // Attempt address lookup
       const address = await Location.reverseGeocodeAsync({ latitude, longitude });
-      
       if (address[0]) {
         const { street, city, postalCode } = address[0];
         setLocation(`${street ? street + ', ' : ''}${city}, ${postalCode}`);
+      } else {
+        setLocation(`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`);
       }
       
       mapRef.current?.animateToRegion({
@@ -138,7 +174,6 @@ const ReportIssueScreen = ({ navigation }) => {
 
     } catch (error) {
       setLocation('Could not fetch location');
-      Alert.alert('Error', 'Unable to get current location');
     }
   };
 
@@ -165,7 +200,6 @@ const ReportIssueScreen = ({ navigation }) => {
     formData.append('location_address', location);
     formData.append('category_id', selectedCategory);
 
-    const API_URL = 'https://parivartan-backend.onrender.com/api/reports'; 
     
     try {
       const response = await fetch(API_URL, {
@@ -264,14 +298,14 @@ const ReportIssueScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
           <View style={styles.mapContainer}>
-            <MapView 
+            <MapViewer 
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
               style={styles.map} 
               initialRegion={PUNE_REGION}
             >
-              {coordinate && <Marker coordinate={coordinate} />}
-            </MapView>
+              {coordinate && <MapMarker coordinate={coordinate} />}
+            </MapViewer>
           </View>
           <View style={styles.locationDisplayBox}>
             <Ionicons name="location-sharp" size={20} color="#10B981" />

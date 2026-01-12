@@ -6,12 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  // --- FIX: Add Platform and StatusBar for safe area handling ---
   Platform,
-  StatusBar as RNStatusBar, // Rename to avoid conflict
+  StatusBar as RNStatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// --- FIX: Correct the import path for your AppHeader component ---
 import AppHeader from './components/AppHeader';
 
 const HomeScreen = ({ navigation }) => {
@@ -21,23 +19,37 @@ const HomeScreen = ({ navigation }) => {
     { id: 3, name: 'Waste & Cleanliness', icon: 'trash', color: '#10B981' },
     { id: 4, name: 'Parks & Recreation', icon: 'leaf', color: '#059669' },
   ];
+  
+  // --- 1. MOCK REPORT STATUS CHANGED TO 'Resolved' ---
   const recentReports = [
     {
       id: 1,
       title: 'Pothole on Main Street',
       location: 'Main Street, Pimpri',
       date: '10/9/2025',
-      status: 'In Progress',
+      status: 'Resolved', // <-- Changed from 'In Progress'
       icon: 'car',
     },
   ];
+
+  // --- 2. NEW HELPER FUNCTION FOR DYNAMIC BADGE STYLING ---
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case 'Resolved':
+        return { backgroundColor: '#D1FAE5', color: '#065F46' };
+      case 'In Progress':
+        return { backgroundColor: '#E0E7FF', color: '#4F46E5' };
+      default:
+        return { backgroundColor: '#F3F4F6', color: '#6B7280' };
+    }
+  };
+
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <AppHeader />
 
-        {/* Welcome Card and the rest of your screen content... */}
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>Welcome, Citizen!</Text>
           <Text style={styles.welcomeSubtitle}>
@@ -91,21 +103,29 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          {recentReports.map((report) => (
-            <View key={report.id} style={styles.reportCard}>
-              <View style={styles.reportIcon}>
-                <Ionicons name={report.icon} size={20} color="#4F46E5" />
-              </View>
-              <View style={styles.reportContent}>
-                <Text style={styles.reportTitle}>{report.title}</Text>
-                <Text style={styles.reportLocation}>{report.location}</Text>
-                <Text style={styles.reportDate}>{report.date}</Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>{report.status}</Text>
-              </View>
-            </View>
-          ))}
+          {recentReports.map((report) => {
+              // Get the dynamic styles for the badge
+              const badgeStyle = getStatusBadgeStyle(report.status);
+              return (
+              <TouchableOpacity
+                key={report.id}
+                style={styles.reportCard}
+                onPress={() => navigation.navigate('ReportDetail', { report: report })} 
+              >
+                <View style={styles.reportIcon}>
+                  <Ionicons name={report.icon} size={20} color="#4F46E5" />
+                </View>
+                <View style={styles.reportContent}>
+                  <Text style={styles.reportTitle}>{report.title}</Text>
+                  <Text style={styles.reportLocation}>{report.location}</Text>
+                  <Text style={styles.reportDate}>{report.date}</Text>
+                </View>
+                {/* --- 3. DYNAMIC STYLES APPLIED TO THE BADGE --- */}
+                <View style={[styles.statusBadge, { backgroundColor: badgeStyle.backgroundColor }]}>
+                  <Text style={[styles.statusText, { color: badgeStyle.color }]}>{report.status}</Text>
+                </View>
+              </TouchableOpacity>
+          )})}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -113,7 +133,6 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    // --- FIX: Updated container style for Android status bar ---
     container: {
       flex: 1,
       backgroundColor: '#F9FAFB',
@@ -262,7 +281,6 @@ const styles = StyleSheet.create({
       color: '#9CA3AF',
     },
     statusBadge: {
-      backgroundColor: '#E0E7FF',
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 16,
@@ -270,7 +288,6 @@ const styles = StyleSheet.create({
     statusText: {
       fontSize: 12,
       fontWeight: '500',
-      color: '#4F46E5',
     },
 });
 
