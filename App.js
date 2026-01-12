@@ -20,7 +20,7 @@ import ReportDetailScreen from './src/screen/ReportDetailScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const ADMIN_DASHBOARD_URL = 'https://https://parivartan-admin.netlify.app'; 
+const ADMIN_DASHBOARD_URL = 'https://parivartan-admin.netlify.app'; 
 
 // --- TAB NAVIGATOR ---
 function MainTabNavigator() {
