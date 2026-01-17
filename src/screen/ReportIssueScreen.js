@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import MapViewer, { MapMarker, PROVIDER_GOOGLE } from './components/MapViewer';
-import { API_URL } from '../config';
+import { API_URL } from '../config'; // Importing the Base URL
 
 const ReportIssueScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -32,7 +32,6 @@ const ReportIssueScreen = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState('');
 
-
   const PUNE_REGION = {
     latitude: 18.635,
     longitude: 73.78,
@@ -40,7 +39,6 @@ const ReportIssueScreen = ({ navigation }) => {
     longitudeDelta: 0.0421,
   };
 
-  // --- NEW: Final list of categories as discussed ---
   const mainCategories = [
     { id: 1, name: 'Roads & Traffic', icon: 'car', color: '#4F46E5' },
     { id: 3, name: 'Waste & Cleanliness', icon: 'trash', color: '#10B981' },
@@ -114,18 +112,13 @@ const ReportIssueScreen = ({ navigation }) => {
   };
 
   const getCurrentLocation = async () => {
-    // 1. Web Specific: Fast path
     if (Platform.OS === 'web') {
       try {
-        // Use browser's built-in geolocation directly
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
             setCoordinate({ latitude, longitude });
-            // Set a friendly text immediately so it doesn't say "Detecting..."
             setLocation(`Lat: ${latitude.toFixed(4)}, Long: ${longitude.toFixed(4)}`);
-            
-            // Try to animate map
             mapRef.current?.animateToRegion({
               latitude,
               longitude,
@@ -135,7 +128,6 @@ const ReportIssueScreen = ({ navigation }) => {
           },
           (error) => {
              console.log("Web location error", error);
-             // Fallback to Pune if denied
              setCoordinate(PUNE_REGION);
              setLocation('Location denied. Pinned Pune (Demo)');
           }
@@ -147,7 +139,6 @@ const ReportIssueScreen = ({ navigation }) => {
       return;
     }
 
-    // 2. Mobile Logic (Keep as is)
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return;
 
@@ -156,7 +147,6 @@ const ReportIssueScreen = ({ navigation }) => {
       const { latitude, longitude } = locationData.coords;
       setCoordinate({ latitude, longitude });
       
-      // Attempt address lookup
       const address = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (address[0]) {
         const { street, city, postalCode } = address[0];
@@ -186,26 +176,36 @@ const ReportIssueScreen = ({ navigation }) => {
     setIsSubmitting(true);
     const formData = new FormData();
     const image = images[0];
-    const uriParts = image.uri.split('.');
-    const fileType = uriParts[uriParts.length - 1];
+    
+    // Handle Web vs Mobile Image Data
+    if (Platform.OS === 'web') {
+       // Convert blob URI to real blob/file for web upload
+       const res = await fetch(image.uri);
+       const blob = await res.blob();
+       formData.append('image', blob, 'photo.jpg');
+    } else {
+       const uriParts = image.uri.split('.');
+       const fileType = uriParts[uriParts.length - 1];
+       formData.append('image', {
+         uri: image.uri,
+         name: `photo.${fileType}`,
+         type: `image/${fileType}`,
+       });
+    }
 
-    formData.append('image', {
-      uri: image.uri,
-      name: `photo.${fileType}`,
-      type: `image/${fileType}`,
-    });
     formData.append('description', description);
     formData.append('latitude', coordinate.latitude);
     formData.append('longitude', coordinate.longitude);
     formData.append('location_address', location);
     formData.append('category_id', selectedCategory);
-
     
     try {
-      const response = await fetch(API_URL, {
+      // --- FIX: Append /api/reports to the base API_URL ---
+      const response = await fetch(`${API_URL}/api/reports`, { 
         method: 'POST',
         body: formData,
       });
+
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.message || 'Something went wrong');
